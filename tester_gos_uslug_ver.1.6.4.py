@@ -1606,23 +1606,23 @@ class Window:
                     StartUsluga()
                     continue
             try:
-                time.sleep(5) # пауза перед поиском кнопки назад
+                time.sleep(4) # пауза перед поиском кнопки назад
                 backFromCalendar = self.browser.find_element(By.CLASS_NAME, "link-btn")
                 
                 
                 time.sleep(2)  # пауза после прокрутки
                 backFromCalendar.click()
-                time.sleep(4)  # пауза после клика
+                time.sleep(3)  # пауза после клика
 
             except ElementClickInterceptedException:
                 try:
-                    time.sleep(5) # пауза перед поиском альтернативной кнопки
+                    time.sleep(4) # пауза перед поиском альтернативной кнопки
                     backIfNotHaveRecord = self.browser.find_element(By.CSS_SELECTOR,"lib-button.conf-modal__button:nth-child(2) > div:nth-child(1) > button:nth-child(1)")
                     new_data = "_"
                     index_to_insert = indexDF[i]
                     df.at[index_to_insert, NameService] = new_data
                     backIfNotHaveRecord.click()
-                    time.sleep(4)
+                    time.sleep(3)
                 except NoSuchElementException :
                     #refreshPage = self.browser.find_element(By.XPATH,"//span[contains(text(),'Попробовать ещё раз')]") 
                     new_data = "-"
