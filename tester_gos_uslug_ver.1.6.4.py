@@ -1511,11 +1511,11 @@ class Window:
                 rightRegionSearch.clear()
                 rightRegionSearch.send_keys(NameOVD[i])
 
-                time.sleep(1.5)
+                time.sleep(2)
 
             except ElementClickInterceptedException:
                 try:    
-                    time.sleep(3.5)
+                    time.sleep(4)
                     rightRegionSearch = self.wait.until(EC.visibility_of_element_located(search_input))
 
                     rightRegionSearch.click()
@@ -1523,7 +1523,7 @@ class Window:
                     rightRegionSearch.send_keys(NameOVD[i])
                 except ElementClickInterceptedException:
                     try:
-                        time.sleep(3.5)
+                        time.sleep(4)
                         rightRegionSearch = self.wait.until(EC.visibility_of_element_located(search_input))
 
                         rightRegionSearch.click()
@@ -1538,10 +1538,10 @@ class Window:
                 break
                 
             try :
-                time.sleep(3) # пауза перед поиском кнопки
+                time.sleep(4) # пауза перед поиском кнопки
                 butLinkOnSearchMap = (By.CLASS_NAME,"balloon-btn") 
                 ButtonLinkOnSearchMap = self.wait.until(EC.visibility_of_element_located(butLinkOnSearchMap))
-                time.sleep(3) # пауза перед кликом
+                time.sleep(4) # пауза перед кликом
                 ButtonLinkOnSearchMap.click() # нажатие на название подразделение после чего появляется кнопка
 
 
@@ -1552,7 +1552,7 @@ class Window:
                     new_data = "Х"
                     index_to_insert = indexDF[i]
                     df.at[index_to_insert, NameService] = new_data
-                    time.sleep(3)
+                    time.sleep(4)
                     continue
                 except:
                     print("Неизвестная ошибка")
@@ -1563,7 +1563,7 @@ class Window:
             self.wait.until(EC.visibility_of_element_located(chooseBut))
             chooseButton = self.wait.until(EC.element_to_be_clickable(chooseBut)) # нажатие на кнопку
             
-            time.sleep(4)
+            time.sleep(4.5)
             
             chooseButton.click()
 
@@ -1606,11 +1606,11 @@ class Window:
                     StartUsluga()
                     continue
             try:
-                time.sleep(4) # пауза перед поиском кнопки назад
+                time.sleep(5) # пауза перед поиском кнопки назад
                 backFromCalendar = self.browser.find_element(By.CLASS_NAME, "link-btn")
                 
                 
-                time.sleep(2)  # пауза после прокрутки
+                time.sleep(3)  # пауза после прокрутки
                 backFromCalendar.click()
                 time.sleep(3)  # пауза после клика
 
@@ -1622,7 +1622,7 @@ class Window:
                     index_to_insert = indexDF[i]
                     df.at[index_to_insert, NameService] = new_data
                     backIfNotHaveRecord.click()
-                    time.sleep(3)
+                    time.sleep(4)
                 except NoSuchElementException :
                     #refreshPage = self.browser.find_element(By.XPATH,"//span[contains(text(),'Попробовать ещё раз')]") 
                     new_data = "-"
