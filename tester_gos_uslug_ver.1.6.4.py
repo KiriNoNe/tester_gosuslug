@@ -1250,7 +1250,10 @@ class Window:
         with open(file_path, "w", encoding='utf-8') as file:
             json.dump(selected_data, file, ensure_ascii=False, indent=4)
     
-        self.create_data_frames()    
+        self.create_data_frames()   
+
+        
+         
     def rightEmailTelepthoneRegoin(self):
         emailRight = WebDriverWait(self.browser, 20).until(
             EC.element_to_be_clickable((By.CLASS_NAME,"button")))
@@ -1535,9 +1538,10 @@ class Window:
                 break
                 
             try :
-                time.sleep(1)
+                time.sleep(3) # пауза перед поиском кнопки
                 butLinkOnSearchMap = (By.CLASS_NAME,"balloon-btn") 
                 ButtonLinkOnSearchMap = self.wait.until(EC.visibility_of_element_located(butLinkOnSearchMap))
+                time.sleep(3) # пауза перед кликом
                 ButtonLinkOnSearchMap.click() # нажатие на название подразделение после чего появляется кнопка
 
 
@@ -1548,7 +1552,7 @@ class Window:
                     new_data = "Х"
                     index_to_insert = indexDF[i]
                     df.at[index_to_insert, NameService] = new_data
-                    time.sleep(1)
+                    time.sleep(3)
                     continue
                 except:
                     print("Неизвестная ошибка")
@@ -1558,7 +1562,9 @@ class Window:
             chooseBut = By.CLASS_NAME,"wide"    
             self.wait.until(EC.visibility_of_element_located(chooseBut))
             chooseButton = self.wait.until(EC.element_to_be_clickable(chooseBut)) # нажатие на кнопку
-            time.sleep(1)
+            
+            time.sleep(4)
+            
             chooseButton.click()
 
             kalendNum = (By.XPATH,"//epgu-cf-ui-constructor-screen-pad[@class='ng-star-inserted']") 
@@ -1600,18 +1606,23 @@ class Window:
                     StartUsluga()
                     continue
             try:
-                backFromCalendar = self.browser.find_element(By.CLASS_NAME,"link-btn")
+                time.sleep(5) # пауза перед поиском кнопки назад
+                backFromCalendar = self.browser.find_element(By.CLASS_NAME, "link-btn")
+                
+                
+                time.sleep(2)  # пауза после прокрутки
                 backFromCalendar.click()
-                time.sleep(1)
+                time.sleep(4)  # пауза после клика
 
             except ElementClickInterceptedException:
                 try:
+                    time.sleep(5) # пауза перед поиском альтернативной кнопки
                     backIfNotHaveRecord = self.browser.find_element(By.CSS_SELECTOR,"lib-button.conf-modal__button:nth-child(2) > div:nth-child(1) > button:nth-child(1)")
                     new_data = "_"
                     index_to_insert = indexDF[i]
                     df.at[index_to_insert, NameService] = new_data
                     backIfNotHaveRecord.click()
-                    time.sleep(2)
+                    time.sleep(4)
                 except NoSuchElementException :
                     #refreshPage = self.browser.find_element(By.XPATH,"//span[contains(text(),'Попробовать ещё раз')]") 
                     new_data = "-"
@@ -1622,7 +1633,7 @@ class Window:
         return df
     def BackMainPage(self):
         self.browser.get('https://www.gosuslugi.ru/600300/1/form')
-        time.sleep(1)
+        time.sleep(2)
         
     def StartUslugaInProgram(self,StartUsluga):
         self.BackMainPage()
