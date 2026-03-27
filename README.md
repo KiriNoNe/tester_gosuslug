@@ -4,6 +4,22 @@
 ***
 Функционал программы:
 ***
-Для клонирования использовать команды:
+## Установка и клонирование
+
+Для работы с проектом необходимо установить Git LFS и клонировать репозиторий:
+
+```bash
+# 1. Установка Git LFS (для Linux)
+sudo apt install git-lfs     # для Ubuntu/Debian
+# или
+sudo dnf install git-lfs     # для Fedora/RedOS
+
+# 2. Инициализация Git LFS
 git lfs install
+
+# 3. Клонирование репозитория
 git clone https://github.com/KiriNoNe/tester_gosuslug.git
+cd tester_gosuslug
+
+# 4. Загрузка больших файлов (гарантированно)
+git lfs pull
