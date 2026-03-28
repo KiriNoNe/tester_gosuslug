@@ -26,6 +26,8 @@ import datetime
 import customtkinter
 
 from PIL import Image
+import PIL._tkinter_finder
+import tkinter
 class ToolTip:
     def __init__(self, widget, text):
         self.widget = widget
@@ -346,6 +348,41 @@ class Window:
                         ,'Здвинск','Кыштовка','Ордынское','Северное','Сузун','Тогучин','Усть-Тарка','Черепаново','Чистоозерное']
         self.indexDFMVD = ['УВМ','УВМ ОВТМ','УВМ Дуси Ковальчук']
     
+        # Настройка скорости поиска
+        # 'fast' - минимальные задержки
+        # 'slow' - увеличенные задержки (для стабильности)
+        self.speed_mode = 'slow'  # По умолчанию медленный режим
+        
+        # Словарь с задержками для разных режимов
+        self.delays = {
+            'fast': {
+                'after_input': 0.5,      # после ввода текста
+                'before_button': 0.5,    # перед поиском кнопки
+                'before_click': 0.5,     # перед кликом
+                'after_choose': 1,       # после выбора услуги
+                'after_click': 1,        # после клика
+                'before_back': 1,        # перед поиском кнопки назад
+                'after_back': 1,         # после клика назад
+                'error_retry': 2,        # при повторной попытке после ошибки
+                'main_page': 1,          # после возврата на главную
+            },
+            'slow': {
+                'after_input': 2,
+                'before_button': 4,
+                'before_click': 4,
+                'after_choose': 4.5,
+                'after_click': 3,
+                'before_back': 5,
+                'after_back': 3,
+                'error_retry': 4,
+                'main_page': 2,
+            }
+        }
+    
+    def get_delay(self, delay_name):
+        """Возвращает задержку для текущего режима"""
+        return self.delays[self.speed_mode].get(delay_name, 1)
+
     def load_uslugi_from_file(self, filename, default_uslugi):
         """Загружает список услуг из JSON файла"""
         sub_folder = "files"
@@ -453,60 +490,96 @@ class Window:
         """Создаёт окно настроек."""
         self.window_setting = Toplevel(self.root)
         self.window_setting.title("Настройки")
-        self.window_setting.geometry("600x600")  # Увеличил высоту для новых кнопок
+        self.window_setting.geometry("600x700")  # Увеличил высоту для новых элементов
         self.window_setting["bg"] = "#EEE2DC"
 
         # Настройка колонок и строк
         for c in range(5):
             self.window_setting.columnconfigure(index=c, weight=1)
-        for r in range(10):  # Увеличил количество строк
+        for r in range(12):  # Увеличил количество строк
             self.window_setting.rowconfigure(index=r, weight=1)
+
+        # ========== НОВАЯ СЕКЦИЯ: Скорость поиска ==========
+        label_speed = ttk.Label(
+            self.window_setting, 
+            text="Скорость работы программы", 
+            foreground="#AC3B61", 
+            style="Your.TLabel", 
+            anchor="center"
+        )
+        label_speed.grid(row=0, column=1, columnspan=3, pady=(10, 5))
+        
+        # Фрейм для радиокнопок
+        speed_frame = ttk.Frame(self.window_setting)
+        speed_frame.grid(row=1, column=1, columnspan=3, pady=5)
+        
+        # Переменная для хранения выбранного режима
+        self.speed_var = StringVar(value=self.speed_mode)
+        
+        # Радиокнопка "Быстрый"
+        fast_radio = ttk.Radiobutton(
+            speed_frame,
+            text="Быстрый (минимальные задержки, риск ошибок)",
+            variable=self.speed_var,
+            value="fast",
+            style='Your.TRadiobutton',
+            command=lambda: self.set_speed_mode("fast")
+        )
+        fast_radio.pack(anchor="w", padx=10, pady=2)
+        
+        # Радиокнопка "Медленный"
+        slow_radio = ttk.Radiobutton(
+            speed_frame,
+            text="Медленный (увеличенные задержки, стабильность)",
+            variable=self.speed_var,
+            value="slow",
+            style='Your.TRadiobutton',
+            command=lambda: self.set_speed_mode("slow")
+        )
+        slow_radio.pack(anchor="w", padx=10, pady=2)
+        
+        # Пояснение
+        speed_hint = ttk.Label(
+            speed_frame,
+            text="Быстрый режим подходит для стабильного интернета,\nМедленный - если возникают ошибки загрузки страниц",
+            foreground="#666666",
+            font=("Trebuchet MS", 9),
+            background="#EEE2DC",
+            justify="center"
+        )
+        speed_hint.pack(anchor="w", padx=10, pady=(5, 0))
+        
+        # Разделитель
+        separator1 = ttk.Separator(self.window_setting, orient='horizontal')
+        separator1.grid(row=2, column=0, columnspan=5, sticky='ew', pady=10)
 
         # ----- Существующие настройки (Путь к услугам) -----
         label = ttk.Label(self.window_setting, text="Путь к услугам", foreground="#AC3B61", style="Your.TLabel", anchor="center")
-        label.grid(row=1, column=1, columnspan=1)
+        label.grid(row=3, column=1, columnspan=1)
         btn = customtkinter.CTkButton(
-                self.window_setting,
-                text="Перейти",
-                font=("Trebuchet MS", 14, "bold"),
-                fg_color="#EDC7B7",
-                hover_color="#A58B80",
-                text_color="#AC3B61",
-                command=lambda: Thread(
-                    target=self.start_setting_path_uslugi
-                ).start()
-            )
-        btn.grid(row=2, column=1)
+            self.window_setting,
+            text="Перейти",
+            font=("Trebuchet MS", 14, "bold"),
+            fg_color="#EDC7B7",
+            hover_color="#A58B80",
+            text_color="#AC3B61",
+            command=lambda: Thread(target=self.start_setting_path_uslugi).start()
+        )
+        btn.grid(row=4, column=1)
 
-        # ----- Существующие настройки (Путь к подуслугам) -----
-        #label = ttk.Label(self.window_setting, text="Путь к подуслугам", foreground="#AC3B61", style="Your.TLabel", anchor="center")
-        #label.grid(row=1, column=3, columnspan=1)
-        #btn = customtkinter.CTkButton(
-        #        self.window_setting,
-        #        text="Перейти",
-        #        font=("Trebuchet MS", 14, "bold"),
-        #        fg_color="#EDC7B7",
-        #        hover_color="#A58B80",
-        #        text_color="#AC3B61",
-        #        command=lambda: Thread(
-        #            target=self.start_setting_path_poduslugi
-        #        ).start()
-        #    )
-        #btn.grid(row=2, column=3)
+        # Разделитель
+        separator2 = ttk.Separator(self.window_setting, orient='horizontal')
+        separator2.grid(row=5, column=0, columnspan=5, sticky='ew', pady=10)
 
         # ========== НОВАЯ СЕКЦИЯ: Редактирование списка услуг ==========
-        # Разделитель (визуальный)
-        separator = ttk.Separator(self.window_setting, orient='horizontal')
-        separator.grid(row=4, column=0, columnspan=5, sticky='ew', pady=10)
-        
-        label = ttk.Label(
+        label_edit = ttk.Label(
             self.window_setting, 
             text="Редактирование списка услуг (радио-кнопки)", 
             foreground="#AC3B61", 
             style="Your.TLabel", 
             anchor="center"
         )
-        label.grid(row=5, column=1, columnspan=3, pady=10)
+        label_edit.grid(row=6, column=1, columnspan=3, pady=10)
         
         # Кнопка для редактирования списка услуг
         btn_edit_services = customtkinter.CTkButton(
@@ -518,7 +591,7 @@ class Window:
             text_color="#AC3B61",
             command=lambda: Thread(target=self.start_setting_edit_services_list).start()
         )
-        btn_edit_services.grid(row=6, column=1, columnspan=1)
+        btn_edit_services.grid(row=7, column=1, columnspan=1)
         
         # Кнопка для сброса к значениям по умолчанию
         btn_reset_services = customtkinter.CTkButton(
@@ -530,7 +603,7 @@ class Window:
             text_color="#AC3B61",
             command=lambda: Thread(target=self.reset_services_to_default).start()
         )
-        btn_reset_services.grid(row=6, column=3, columnspan=1)
+        btn_reset_services.grid(row=7, column=3, columnspan=1)
         
         # Пояснение
         tooltip_label = ttk.Label(
@@ -541,7 +614,7 @@ class Window:
             background="#EEE2DC",
             justify="center"
         )
-        tooltip_label.grid(row=7, column=1, columnspan=3, pady=10)
+        tooltip_label.grid(row=8, column=1, columnspan=3, pady=10)
     
     def start_setting_edit_services_list(self):
         """Окно для редактирования всех услуг (радио-кнопок)"""
@@ -694,7 +767,24 @@ class Window:
         canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
 
-    
+    def set_speed_mode(self, mode='slow'):
+        """Устанавливает режим скорости
+        mode: 'fast' - быстрый режим (минимальные задержки)
+            'slow' - медленный режим (увеличенные задержки)
+        """
+        if mode in self.delays:
+            self.speed_mode = mode
+            # Обновляем переменную в окне настроек, если оно открыто
+            if hasattr(self, 'speed_var'):
+                self.speed_var.set(mode)
+            print(f"Режим скорости установлен: {mode}")
+        else:
+            print(f"Неизвестный режим: {mode}. Доступны: fast, slow")
+
+    def get_speed_mode(self):
+        """Возвращает текущий режим скорости"""
+        return self.speed_mode
+
     def save_single_service(self, item):
         """Сохраняет одну услугу"""
         uslugi_list = item["uslugi_list"]
@@ -1492,18 +1582,17 @@ class Window:
             if WorkDays > 5:
                 day_violation = f'{copy_today}({WorkDays-5})'
         return day_violation    
-    def SearchOVDSpeedUp(self,ListOVD,NameService, StartUsluga, NameOVD,indexDF,df,YVM=False):
+    
+    def SearchOVDSpeedUp(self, ListOVD, NameService, StartUsluga, NameOVD, indexDF, df, YVM=False):
         for i in range(len(NameOVD)):
             if NameOVD[i] not in ListOVD:
                 new_data = "X"
                 index_to_insert = indexDF[i]
-
                 df.at[index_to_insert, NameService] = new_data
-
                 continue
+            
             try:
-                
-                search_input = (By.CLASS_NAME,"search-input")
+                search_input = (By.CLASS_NAME, "search-input")
                 self.wait.until(EC.visibility_of_element_located(search_input))
                 rightRegionSearch = self.wait.until(EC.element_to_be_clickable(search_input))
 
@@ -1511,21 +1600,19 @@ class Window:
                 rightRegionSearch.clear()
                 rightRegionSearch.send_keys(NameOVD[i])
 
-                time.sleep(2)
+                time.sleep(self.get_delay('after_input'))
 
             except ElementClickInterceptedException:
-                try:    
-                    time.sleep(4)
+                try:
+                    time.sleep(self.get_delay('error_retry'))
                     rightRegionSearch = self.wait.until(EC.visibility_of_element_located(search_input))
-
                     rightRegionSearch.click()
                     rightRegionSearch.clear()
                     rightRegionSearch.send_keys(NameOVD[i])
                 except ElementClickInterceptedException:
                     try:
-                        time.sleep(4)
+                        time.sleep(self.get_delay('error_retry'))
                         rightRegionSearch = self.wait.until(EC.visibility_of_element_located(search_input))
-
                         rightRegionSearch.click()
                         rightRegionSearch.clear()
                         rightRegionSearch.send_keys(NameOVD[i])
@@ -1536,62 +1623,59 @@ class Window:
             except TimeoutException:
                 print("Ошибка страница не загрузилась")
                 break
-                
-            try :
-                time.sleep(4) # пауза перед поиском кнопки
-                butLinkOnSearchMap = (By.CLASS_NAME,"balloon-btn") 
+            
+            try:
+                time.sleep(self.get_delay('before_button'))
+                butLinkOnSearchMap = (By.CLASS_NAME, "balloon-btn")
                 ButtonLinkOnSearchMap = self.wait.until(EC.visibility_of_element_located(butLinkOnSearchMap))
-                time.sleep(4) # пауза перед кликом
-                ButtonLinkOnSearchMap.click() # нажатие на название подразделение после чего появляется кнопка
-
+                time.sleep(self.get_delay('before_click'))
+                ButtonLinkOnSearchMap.click()
 
             except TimeoutException:
-                try: 
-                    butNotFound = (By.CLASS_NAME,"not-found-text")
+                try:
+                    butNotFound = (By.CLASS_NAME, "not-found-text")
                     self.wait.until(EC.visibility_of_element_located(butNotFound))
                     new_data = "Х"
                     index_to_insert = indexDF[i]
                     df.at[index_to_insert, NameService] = new_data
-                    time.sleep(4)
+                    time.sleep(self.get_delay('error_retry'))
                     continue
                 except:
                     print("Неизвестная ошибка")
                     rightRegionSearch.clear()
                     continue
 
-            chooseBut = By.CLASS_NAME,"wide"    
+            chooseBut = By.CLASS_NAME, "wide"
             self.wait.until(EC.visibility_of_element_located(chooseBut))
-            chooseButton = self.wait.until(EC.element_to_be_clickable(chooseBut)) # нажатие на кнопку
+            chooseButton = self.wait.until(EC.element_to_be_clickable(chooseBut))
             
-            time.sleep(4.5)
-            
+            time.sleep(self.get_delay('after_choose'))
             chooseButton.click()
 
-            kalendNum = (By.XPATH,"//epgu-cf-ui-constructor-screen-pad[@class='ng-star-inserted']") 
+            kalendNum = (By.XPATH, "//epgu-cf-ui-constructor-screen-pad[@class='ng-star-inserted']")
             try:
                 self.wait.until(EC.visibility_of_all_elements_located(kalendNum))
-                kalendar = self.browser.find_elements(By.CLASS_NAME,"locked")
+                kalendar = self.browser.find_elements(By.CLASS_NAME, "locked")
                 soup = BeautifulSoup(self.browser.page_source, "lxml")
                 dataDay = []
 
                 for day in kalendar:
-                    dayNumber = day.find_element(By.CLASS_NAME,"calendar-day-text").text
+                    dayNumber = day.find_element(By.CLASS_NAME, "calendar-day-text").text
                     dataDay.append(dayNumber)
 
-
                 dataDaySet = frozenset(dataDay)
-                dayRecord = [item for item in  self.AllDayinMonth if item not in  dataDaySet] 
+                dayRecord = [item for item in self.AllDayinMonth if item not in dataDaySet]
                 dayRecord = dayRecord[0]
                 new_data = int(dayRecord)
-                
-                dayRecordVer = self.WorkDaysAfterToDay(new_data,YVM)
-                
+
+                dayRecordVer = self.WorkDaysAfterToDay(new_data, YVM)
+
                 index_to_insert = indexDF[i]
                 df.at[index_to_insert, NameService] = str(dayRecordVer)
 
                 print(dayRecord)
             except TimeoutException:
-                TimeOutKalendar = (By.CLASS_NAME,"button") 
+                TimeOutKalendar = (By.CLASS_NAME, "button")
                 try:
                     self.wait.until(EC.visibility_of_all_elements_located(TimeOutKalendar))
                     self.browser.refresh()
@@ -1605,47 +1689,48 @@ class Window:
                     self.BackMainPage()
                     StartUsluga()
                     continue
+            
             try:
-                time.sleep(5) # пауза перед поиском кнопки назад
+                time.sleep(self.get_delay('before_back'))
                 backFromCalendar = self.browser.find_element(By.CLASS_NAME, "link-btn")
-                
-                
-                time.sleep(3)  # пауза после прокрутки
-                backFromCalendar.click()
-                time.sleep(3)  # пауза после клика
+                self.browser.execute_script("arguments[0].click();", backFromCalendar)
+                time.sleep(self.get_delay('after_back'))
 
             except ElementClickInterceptedException:
                 try:
-                    time.sleep(4) # пауза перед поиском альтернативной кнопки
-                    backIfNotHaveRecord = self.browser.find_element(By.CSS_SELECTOR,"lib-button.conf-modal__button:nth-child(2) > div:nth-child(1) > button:nth-child(1)")
+                    time.sleep(self.get_delay('error_retry'))
+                    backIfNotHaveRecord = self.browser.find_element(By.CSS_SELECTOR, "lib-button.conf-modal__button:nth-child(2) > div:nth-child(1) > button:nth-child(1)")
                     new_data = "_"
                     index_to_insert = indexDF[i]
                     df.at[index_to_insert, NameService] = new_data
                     backIfNotHaveRecord.click()
-                    time.sleep(4)
-                except NoSuchElementException :
-                    #refreshPage = self.browser.find_element(By.XPATH,"//span[contains(text(),'Попробовать ещё раз')]") 
+                    time.sleep(self.get_delay('error_retry'))
+                except NoSuchElementException:
                     new_data = "-"
                     index_to_insert = indexDF[i]
                     df.at[index_to_insert, NameService] = new_data
                     StartUsluga()
                     continue
+        
         return df
+
     def BackMainPage(self):
         self.browser.get('https://www.gosuslugi.ru/600300/1/form')
-        time.sleep(2)
-        
-    def StartUslugaInProgram(self,StartUsluga):
+        time.sleep(self.get_delay('main_page'))
+
+    def StartUslugaInProgram(self, StartUsluga):
         self.BackMainPage()
         try:
             StartUsluga()
-            
         except TimeoutException:
             self.BackMainPage()
             try:
                 StartUsluga()
             except TimeoutException:
                 return "Ошибка загрузки страницы"
+            
+    
+        
     def replasementPasport(self):
         self.StartUslugaInProgram(self.StartReplasementPassport)
         
