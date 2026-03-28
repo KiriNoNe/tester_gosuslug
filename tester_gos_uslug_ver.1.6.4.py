@@ -1805,6 +1805,43 @@ class Window:
             
             time.sleep(self.get_delay('after_choose'))
             chooseButton.click()
+            
+            # ========== НОВАЯ ПРОВЕРКА: Окно с ограничением лимита ==========
+            # Проверяем, не появилось ли окно "Запись временно недоступна"
+            try:
+                # Ищем окно с сообщением о лимите
+                limit_error = WebDriverWait(self.browser, 3).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, "h3"))
+                )
+                
+                if limit_error and "Запись временно недоступна" in limit_error.text:
+                    print(f"Обнаружено ограничение для {NameOVD[i]}: превышен лимит попыток")
+                    
+                    # Нажимаем кнопку "На главную"
+                    try:
+                        time.sleep(self.get_delay('before_back'))
+                        backFromCalendar = self.browser.find_element(By.CLASS_NAME, "link-btn")
+                        self.browser.execute_script("arguments[0].click();", backFromCalendar)
+                        time.sleep(self.get_delay('after_back'))
+                    except:
+                        pass
+                    
+                    # Ставим "_" в таблицу и переходим к следующему ОВД
+                    new_data = "_"
+                    index_to_insert = indexDF[i]
+                    df.at[index_to_insert, NameService] = new_data
+                    
+                    # Возвращаемся на главную страницу и продолжаем со следующим ОВД
+                    self.BackMainPage()
+                    StartUsluga()
+                    continue
+                    
+            except TimeoutException:
+                # Окна нет, продолжаем нормальную работу
+                pass
+            except Exception as e:
+                print(f"Ошибка при проверке лимита: {e}")
+            # ========== КОНЕЦ ПРОВЕРКИ ==========
 
             kalendNum = (By.XPATH, "//epgu-cf-ui-constructor-screen-pad[@class='ng-star-inserted']")
             try:

@@ -1,5 +1,5 @@
 {
-    "speed_mode": "slow",
+    "speed_mode": "fast",
     "auto_refresh": false,
     "refresh_interval": 10
 }
