@@ -351,20 +351,19 @@ class Window:
         # Настройка скорости поиска
         # 'fast' - минимальные задержки
         # 'slow' - увеличенные задержки (для стабильности)
-        self.speed_mode = 'slow'  # По умолчанию медленный режим
         
         # Словарь с задержками для разных режимов
         self.delays = {
             'fast': {
-                'after_input': 0.5,      # после ввода текста
-                'before_button': 0.5,    # перед поиском кнопки
-                'before_click': 0.5,     # перед кликом
-                'after_choose': 1,       # после выбора услуги
-                'after_click': 1,        # после клика
-                'before_back': 1,        # перед поиском кнопки назад
-                'after_back': 1,         # после клика назад
-                'error_retry': 2,        # при повторной попытке после ошибки
-                'main_page': 1,          # после возврата на главную
+                'after_input': 0.5,
+                'before_button': 0.5,
+                'before_click': 0.5,
+                'after_choose': 1,
+                'after_click': 1,
+                'before_back': 1,
+                'after_back': 1,
+                'error_retry': 2,
+                'main_page': 1,
             },
             'slow': {
                 'after_input': 2,
@@ -378,7 +377,61 @@ class Window:
                 'main_page': 2,
             }
         }
-    
+        # Путь к файлу настроек
+        self.settings_file = os.path.join(self.dir_path, sub_folder, "settings.json")
+        # Загружаем сохранённые настройки
+        saved_settings = self.load_settings()
+        self.speed_mode = saved_settings.get("speed_mode", "slow")
+        
+        # Если нужно сохранить другие настройки
+        if hasattr(self, 'auto_refresh_var'):
+            self.auto_refresh_var.set(saved_settings.get("auto_refresh", False))
+        
+        print(f"Загружен режим скорости: {self.speed_mode}")
+
+        
+
+    def load_settings(self):
+        """Загружает настройки из файла settings.json"""
+        default_settings = {
+            "speed_mode": "slow",  # по умолчанию медленный режим
+            "auto_refresh": False,  # автообновление таблицы (если нужно)
+            "refresh_interval": 10  # интервал обновления в секундах
+        }
+        
+        if os.path.exists(self.settings_file):
+            try:
+                with open(self.settings_file, "r", encoding='utf-8') as file:
+                    settings = json.load(file)
+                    # Обновляем только существующие настройки
+                    for key in default_settings:
+                        if key in settings:
+                            default_settings[key] = settings[key]
+            except Exception as e:
+                print(f"Ошибка загрузки настроек: {e}")
+        
+        return default_settings
+
+    def save_settings(self):
+        """Сохраняет текущие настройки в файл settings.json"""
+        settings = {
+            "speed_mode": self.speed_mode,
+            "auto_refresh": getattr(self, 'auto_refresh_var', False),
+            "refresh_interval": 10
+        }
+        
+        # Если есть переменная auto_refresh_var, получаем её значение
+        if hasattr(self, 'auto_refresh_var'):
+            if isinstance(self.auto_refresh_var, BooleanVar):
+                settings["auto_refresh"] = self.auto_refresh_var.get()
+        
+        try:
+            with open(self.settings_file, "w", encoding='utf-8') as file:
+                json.dump(settings, file, ensure_ascii=False, indent=4)
+            print(f"Настройки сохранены: режим {self.speed_mode}")
+        except Exception as e:
+            print(f"Ошибка сохранения настроек: {e}")    
+
     def get_delay(self, delay_name):
         """Возвращает задержку для текущего режима"""
         return self.delays[self.speed_mode].get(delay_name, 1)
@@ -424,10 +477,15 @@ class Window:
                               ,f"ПРИГЛАШЕНИЕ ({self.NameSelectedUslugi[8]})":[''],f"АСИ ({self.NameSelectedUslugi[9]})":['']
                               ,f"РУ гр. РФ по месту жит-ва ({self.NameSelectedUslugi[10]})":['']},self.indexDF)
         
-        
+    def on_closing(self):
+        """Вызывается при закрытии главного окна"""
+        self.save_settings()
+        self.root.destroy()
+
     def run(self):
         self.create_data_frames()
         self.draw_window()
+        self.root.protocol("WM_DELETE_WINDOW", self.on_closing)  
         self.root.mainloop()
     def start_thread(self, func):
         thread = Thread(target=func)
@@ -490,15 +548,11 @@ class Window:
         """Создаёт окно настроек."""
         self.window_setting = Toplevel(self.root)
         self.window_setting.title("Настройки")
-        self.window_setting.geometry("600x700")  # Увеличил высоту для новых элементов
+        self.window_setting.geometry("600x700")
         self.window_setting["bg"] = "#EEE2DC"
-
-        # Настройка колонок и строк
-        for c in range(5):
-            self.window_setting.columnconfigure(index=c, weight=1)
-        for r in range(12):  # Увеличил количество строк
-            self.window_setting.rowconfigure(index=r, weight=1)
-
+        
+        # ... настройка колонок и строк ...
+        
         # ========== НОВАЯ СЕКЦИЯ: Скорость поиска ==========
         label_speed = ttk.Label(
             self.window_setting, 
@@ -513,7 +567,7 @@ class Window:
         speed_frame = ttk.Frame(self.window_setting)
         speed_frame.grid(row=1, column=1, columnspan=3, pady=5)
         
-        # Переменная для хранения выбранного режима
+        # Переменная для хранения выбранного режима (берём сохранённое значение)
         self.speed_var = StringVar(value=self.speed_mode)
         
         # Радиокнопка "Быстрый"
@@ -777,7 +831,9 @@ class Window:
             # Обновляем переменную в окне настроек, если оно открыто
             if hasattr(self, 'speed_var'):
                 self.speed_var.set(mode)
-            print(f"Режим скорости установлен: {mode}")
+            # Сохраняем настройки
+            self.save_settings()
+            print(f"Режим скорости установлен и сохранён: {mode}")
         else:
             print(f"Неизвестный режим: {mode}. Доступны: fast, slow")
 
@@ -1119,44 +1175,142 @@ class Window:
         
             
     def ViewTable(self):
-        self.windowViewTable = Toplevel(self.root)  
+        self.windowViewTable = Toplevel(self.root)
         self.windowViewTable.title("Таблица")
         self.windowViewTable.geometry("960x800")
         self.windowViewTable['bg'] = "#EEE2DC"
+        
         style = ttk.Style()
-        style.configure('Treeview.Heading', background="#F7F1EE",foreground='#123C69',font=('Trebuchet MS', 10))
-        style.configure("Treeview", font=('Trebuchet MS', 11),background="#F7F1EE", fieldbackground="#F7F1EE",foreground='#123C69')
+        style.configure('Treeview.Heading', background="#F7F1EE", foreground='#123C69', font=('Trebuchet MS', 10))
+        style.configure("Treeview", font=('Trebuchet MS', 11), background="#F7F1EE", fieldbackground="#F7F1EE", foreground='#123C69')
         
-        self.columns = ("Наименование ОВД","МУ","РВП","ВНЖ","ПАТЕНТ","ВИЗА","РП","ЗП НОВЫЙ","ЗП СТАРЫЙ","ПРИГЛАШЕНИЕ","АСИ","РУ")
-        self.tree = ttk.Treeview(self.windowViewTable,columns=self.columns, show='headings')
-        self.tree.pack(padx=32,pady=32, fill=BOTH,expand=1)
+        self.columns = ("Наименование ОВД", "МУ", "РВП", "ВНЖ", "ПАТЕНТ", "ВИЗА", "РП", "ЗП НОВЫЙ", "ЗП СТАРЫЙ", "ПРИГЛАШЕНИЕ", "АСИ", "РУ")
+        self.tree = ttk.Treeview(self.windowViewTable, columns=self.columns, show='headings')
+        self.tree.pack(padx=32, pady=32, fill=BOTH, expand=1)
         
-        btnFrame = Frame(self.windowViewTable,width=120)
+        # Фрейм для кнопок
+        btnFrame = Frame(self.windowViewTable, width=120)
         btnFrame.pack(side=TOP)
         
-        btnBack = customtkinter.CTkButton(btnFrame, text="Закрыть",font=('Trebuchet MS', 16,'bold'),fg_color='#EDC7B7',hover_color='#A58B80',text_color='#AC3B61', command=lambda: self.windowViewTable.destroy())
-        btnBack.pack(side=LEFT)
+        btnBack = customtkinter.CTkButton(
+            btnFrame, text="Закрыть", font=('Trebuchet MS', 16, 'bold'),
+            fg_color='#EDC7B7', hover_color='#A58B80', text_color='#AC3B61',
+            command=lambda: self.stop_table_refresh() or self.windowViewTable.destroy()
+        )
+        btnBack.pack(side=LEFT, padx=5)
         
-        btnCreateExcel = customtkinter.CTkButton(btnFrame, text="Создать Excel",font=('Trebuchet MS', 16,'bold'),fg_color='#EDC7B7',hover_color='#A58B80',text_color='#AC3B61',command=lambda: self.CreateExcel())
-        btnCreateExcel.pack(side=LEFT)
+        btnCreateExcel = customtkinter.CTkButton(
+            btnFrame, text="Создать Excel", font=('Trebuchet MS', 16, 'bold'),
+            fg_color='#EDC7B7', hover_color='#A58B80', text_color='#AC3B61',
+            command=lambda: self.CreateExcel()
+        )
+        btnCreateExcel.pack(side=LEFT, padx=5)
+        
+        # ========== НОВЫЕ КНОПКИ ДЛЯ ОБНОВЛЕНИЯ ==========
+        # Кнопка "Обновить сейчас"
+        btnRefreshNow = customtkinter.CTkButton(
+            btnFrame, text="Обновить сейчас", font=('Trebuchet MS', 14, 'bold'),
+            fg_color='#EDC7B7', hover_color='#A58B80', text_color='#AC3B61',
+            command=lambda: self.refresh_table_data()
+        )
+        btnRefreshNow.pack(side=LEFT, padx=5)
+        
+        # Переключатель автообновления
+        self.auto_refresh_var = BooleanVar(value=False)
+        chkAutoRefresh = ttk.Checkbutton(
+            btnFrame,
+            text="Автообновление (10 сек)",
+            variable=self.auto_refresh_var,
+            style='Your.TCheckbutton',
+            command=self.toggle_auto_refresh
+        )
+        chkAutoRefresh.pack(side=LEFT, padx=5)
         
         btnFrame.place(relx=0.5, rely=0.98, anchor=CENTER)
+        
+        # Заполняем таблицу
+        self.refresh_table_data()
+        
+        # Переменная для хранения ID задачи автообновления
+        self.auto_refresh_job = None
+
+    def refresh_table_data(self):
+        """Обновляет данные в таблице"""
+        # Очищаем текущие данные
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+        
+        # Получаем актуальные данные из DataFrame
         self.DataOVDs = [tuple(row) for row in self.df.itertuples(index=False)]
         self.DataOVDsYVM = [tuple(row) for row in self.dfMVD.itertuples(index=False)]
-        print(self.DataOVDs)
-        self.tree.heading(f"{self.columns[0]}",text=f"{self.columns[0]}")
-        self.tree.column(f"#{0}",width=130)
-        for i in range(1,len(self.columns)):         
-            self.tree.heading(f"{self.columns[i]}",text=f"{self.columns[i]} ({self.NameSelectedUslugi[i-1]})")
-            self.tree.column(f"#{i}",width=130)
-            
-            
-            
-        for i,DataOVD in enumerate(self.DataOVDs):
-            self.tree.insert(parent='', index='end', values=(self.indexDF[i],)+DataOVD)
-        self.tree.insert(parent='', index='end', values=('','','','','','','','','','','','',''))    
-        for i,DataOVDYVM in enumerate(self.DataOVDsYVM):
-            self.tree.insert(parent='', index='end', values=(self.indexDFMVD[i],)+DataOVDYVM)
+        
+        # Настраиваем заголовки (на случай, если изменились названия услуг)
+        self.tree.heading(f"{self.columns[0]}", text=f"{self.columns[0]}")
+        self.tree.column(f"#{0}", width=130)
+        for i in range(1, len(self.columns)):
+            self.tree.heading(f"{self.columns[i]}", text=f"{self.columns[i]} ({self.NameSelectedUslugi[i-1]})")
+            self.tree.column(f"#{i}", width=130)
+        
+        # Заполняем данными
+        for i, DataOVD in enumerate(self.DataOVDs):
+            self.tree.insert(parent='', index='end', values=(self.indexDF[i],) + DataOVD)
+        
+        self.tree.insert(parent='', index='end', values=('', '', '', '', '', '', '', '', '', '', '', '', ''))
+        
+        for i, DataOVDYVM in enumerate(self.DataOVDsYVM):
+            self.tree.insert(parent='', index='end', values=(self.indexDFMVD[i],) + DataOVDYVM)
+        
+        # Подсвечиваем ячейки с проблемами (опционально)
+        self.highlight_problem_cells()
+
+    def highlight_problem_cells(self):
+        """Подсвечивает ячейки с проблемными значениями"""
+        # Здесь можно добавить подсветку ячеек с 'X', 'Х', '_', '-'
+        # Для Treeview в tkinter сложно сделать подсветку отдельных ячеек,
+        # но можно изменить цвет строки
+        for item in self.tree.get_children():
+            values = self.tree.item(item, 'values')
+            for i, val in enumerate(values):
+                if val in ['X', 'Х', '_', '-']:
+                    # Если нужно подсветить строку, можно изменить тег
+                    self.tree.item(item, tags=('problem',))
+                    break
+        
+        # Настройка тега для проблемных строк
+        self.tree.tag_configure('problem', background='#FFE4E1')  # Светло-розовый фон
+
+    def toggle_auto_refresh(self):
+        """Включает/отключает автообновление"""
+        if self.auto_refresh_var.get():
+            # Включаем автообновление
+            self.start_auto_refresh()
+        else:
+            # Отключаем автообновление
+            self.stop_table_refresh()
+
+    def start_auto_refresh(self):
+        """Запускает автоматическое обновление таблицы"""
+        # Останавливаем предыдущее обновление, если было
+        self.stop_table_refresh()
+        
+        # Запускаем новое обновление
+        self.auto_refresh_job = self.windowViewTable.after(10000, self.auto_refresh_loop)
+        print("Автообновление таблицы включено (каждые 10 секунд)")
+
+    def auto_refresh_loop(self):
+        """Цикл автообновления"""
+        if self.auto_refresh_var.get() and hasattr(self, 'windowViewTable'):
+            # Обновляем данные
+            self.refresh_table_data()
+            # Планируем следующее обновление
+            self.auto_refresh_job = self.windowViewTable.after(10000, self.auto_refresh_loop)
+
+    def stop_table_refresh(self):
+        """Останавливает автообновление"""
+        if hasattr(self, 'auto_refresh_job') and self.auto_refresh_job:
+            self.windowViewTable.after_cancel(self.auto_refresh_job)
+            self.auto_refresh_job = None
+        print("Автообновление таблицы выключено")
         
         
     def CreateExcel(self):
