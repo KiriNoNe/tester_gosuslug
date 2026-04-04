@@ -450,15 +450,74 @@ class Window:
                 json.dump(default_uslugi, file, ensure_ascii=False, indent=4)
             return default_uslugi
 
+
     def StartBrowser(self):
-        self.firefox_path = os.path.join(self.dir_path, "firefox", "firefox")
-        file_path = os.path.join(self.dir_path,"geckodriver")
+        # Определяем операционную систему
+        import sys
+        import platform
+        
+        # Определяем расширение для geckodriver
+        if sys.platform == 'win32' or platform.system() == 'Windows':
+            geckodriver_name = "geckodriver.exe"
+            print("Обнаружена Windows, используем geckodriver.exe")
+        else:
+            geckodriver_name = "geckodriver"
+            print("Обнаружена Linux, используем geckodriver")
+        
+        # Путь к geckodriver (в папке проекта)
+        file_path = os.path.join(self.dir_path, geckodriver_name)
+        
+        # Проверяем, существует ли файл
+        if not os.path.exists(file_path):
+            print(f"Предупреждение: {geckodriver_name} не найден в {self.dir_path}")
+            # Пробуем найти в PATH
+            file_path = geckodriver_name
+        
         service = Service(executable_path=file_path)
         options = webdriver.FirefoxOptions()
-        options.binary_location = self.firefox_path
-        self.browser = webdriver.Firefox(service=service, options=options)
-        self.browser.get('https://www.gosuslugi.ru/600300/1/form')
-        self.wait = WebDriverWait(self.browser,20,poll_frequency=2)
+        
+        # Определяем путь к Firefox в зависимости от ОС
+        if sys.platform == 'win32' or platform.system() == 'Windows':
+            # Windows: ищем Firefox в стандартных местах
+            possible_paths = [
+                r"C:\Program Files\Mozilla Firefox\firefox.exe",
+                r"C:\Program Files (x86)\Mozilla Firefox\firefox.exe",
+            ]
+            firefox_found = False
+            for path in possible_paths:
+                if os.path.exists(path):
+                    options.binary_location = path
+                    print(f"Найден Firefox: {path}")
+                    firefox_found = True
+                    break
+            if not firefox_found:
+                print("Firefox не найден в стандартных местах. Будет использован Firefox из PATH")
+        else:
+            # Linux: ищем Firefox в стандартных местах
+            possible_paths = [
+                "/usr/bin/firefox",
+                "/usr/local/bin/firefox",
+            ]
+            firefox_found = False
+            for path in possible_paths:
+                if os.path.exists(path):
+                    options.binary_location = path
+                    print(f"Найден Firefox: {path}")
+                    firefox_found = True
+                    break
+            if not firefox_found:
+                print("Firefox не найден в стандартных местах. Будет использован Firefox из PATH")
+        
+        # Запускаем браузер
+        try:
+            self.browser = webdriver.Firefox(service=service, options=options)
+            self.browser.get('https://www.gosuslugi.ru/600300/1/form')
+            self.wait = WebDriverWait(self.browser, 20, poll_frequency=2)
+            print("Браузер успешно запущен!")
+        except Exception as e:
+            print(f"Ошибка при запуске браузера: {e}")
+            print(f"Проверьте, что {geckodriver_name} находится в папке {self.dir_path}")
+            raise
     
     
     def create_data_frames(self):
