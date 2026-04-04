@@ -536,6 +536,30 @@ class Window:
                                             hover_color='#A58B80',  width=30,  height=30,
                                             command=lambda: Thread(target=self.StartSetting).start())
         btnSetting.grid(row=4, column=3,sticky='')
+
+        # Кнопка "Проблемные записи (мигранты)"
+        btnProblemMigrant = customtkinter.CTkButton(
+            self.root, 
+            text="🔍 Проблемные записи\n(мигранты)", 
+            font=('Trebuchet MS', 12, 'bold'),
+            fg_color='#EDC7B7', 
+            hover_color='#A58B80', 
+            text_color='#AC3B61',
+            command=lambda: Thread(target=self.show_problem_ovds_window, args=("migrant",)).start()
+        )
+        btnProblemMigrant.grid(row=4, column=1, sticky='WENS', padx=5, pady=5)
+        
+        # Кнопка "Проблемные записи (граждане)"
+        btnProblemCitizen = customtkinter.CTkButton(
+            self.root, 
+            text="🔍 Проблемные записи\n(граждане)", 
+            font=('Trebuchet MS', 12, 'bold'),
+            fg_color='#EDC7B7', 
+            hover_color='#A58B80', 
+            text_color='#AC3B61',
+            command=lambda: Thread(target=self.show_problem_ovds_window, args=("citizen",)).start()
+        )
+        btnProblemCitizen.grid(row=4, column=5, sticky='WENS', padx=5, pady=5)
     
     def save_path_name_btn(self, name_usluga, entry_name_btn):
         """Сохраняет данные в JSON файл."""
@@ -1183,7 +1207,7 @@ class Window:
         style = ttk.Style()
         style.configure('Treeview.Heading', background="#F7F1EE", foreground='#123C69', font=('Trebuchet MS', 10))
         style.configure("Treeview", font=('Trebuchet MS', 11), background="#F7F1EE", fieldbackground="#F7F1EE", foreground='#123C69')
-        
+
         self.columns = ("Наименование ОВД", "МУ", "РВП", "ВНЖ", "ПАТЕНТ", "ВИЗА", "РП", "ЗП НОВЫЙ", "ЗП СТАРЫЙ", "ПРИГЛАШЕНИЕ", "АСИ", "РУ")
         self.tree = ttk.Treeview(self.windowViewTable, columns=self.columns, show='headings')
         self.tree.pack(padx=32, pady=32, fill=BOTH, expand=1)
@@ -1206,7 +1230,6 @@ class Window:
         )
         btnCreateExcel.pack(side=LEFT, padx=5)
         
-        # ========== НОВЫЕ КНОПКИ ДЛЯ ОБНОВЛЕНИЯ ==========
         # Кнопка "Обновить сейчас"
         btnRefreshNow = customtkinter.CTkButton(
             btnFrame, text="Обновить сейчас", font=('Trebuchet MS', 14, 'bold'),
@@ -1233,6 +1256,347 @@ class Window:
         
         # Переменная для хранения ID задачи автообновления
         self.auto_refresh_job = None
+
+    def find_problem_ovds(self, service_type="migrant"):
+        """
+        Находит ОВД с проблемными записями (_)
+        service_type: "migrant" - мигрантские услуги (МУ, РВП, ВНЖ, Патент, Виза)
+                    "citizen" - гражданские услуги (РП, ЗП Новый, ЗП Старый, Приглашение, АСИ, РУ)
+        Возвращает словарь {услуга: [список ОВД]}
+        """
+        problem_dict = {}
+        
+        # Определяем какие услуги проверять
+        if service_type == "migrant":
+            services = [
+                ("МУ", self.df, self.indexDF, 0),
+                ("РВП", self.df, self.indexDF, 1),
+                ("ВНЖ", self.df, self.indexDF, 2),
+                ("Патент", self.df, self.indexDF, 3),
+                ("Виза", self.df, self.indexDF, 4)
+            ]
+        else:  # citizen
+            services = [
+                ("РП", self.df, self.indexDF, 5),
+                ("ЗП Новый", self.df, self.indexDF, 6),
+                ("ЗП Старый", self.df, self.indexDF, 7),
+                ("Приглашение", self.df, self.indexDF, 8),
+                ("АСИ", self.df, self.indexDF, 9),
+                ("РУ", self.df, self.indexDF, 10)
+            ]
+        
+        for service_name, df, index_list, col_index in services:
+            problem_ovds = []
+            column_name = df.columns[col_index]
+            
+            for idx, ovd in enumerate(index_list):
+                value = df.iloc[idx, col_index]
+                # Проверяем только "_"
+                if value == "_":
+                    problem_ovds.append(ovd)
+            
+            if problem_ovds:
+                problem_dict[service_name] = problem_ovds
+        
+        return problem_dict
+
+    def show_problem_ovds_window(self, service_type="migrant"):
+        """
+        Показывает окно со списком проблемных ОВД
+        service_type: "migrant" или "citizen"
+        """
+        problem_dict = self.find_problem_ovds(service_type)
+        
+        if not problem_dict:
+            mb.showinfo("Информация", "Проблемных записей (_) не найдено!")
+            return
+        
+        # Подсчитываем общее количество проблем
+        total_count = sum(len(ovds) for ovds in problem_dict.values())
+        
+        # Создаём окно
+        problem_window = Toplevel(self.root)
+        problem_window.title("Проблемные записи")
+        problem_window.geometry("600x500")
+        problem_window['bg'] = "#EEE2DC"
+        
+        # Заголовок
+        title_text = "Проблемные записи (не удалось записаться)" if service_type == "migrant" else "Проблемные записи (не удалось записаться)"
+        title_label = ttk.Label(
+            problem_window,
+            text=title_text,
+            foreground="#AC3B61",
+            font=('Trebuchet MS', 14, 'bold'),
+            background="#EEE2DC"
+        )
+        title_label.pack(pady=10)
+        
+        # Создаём текстовое поле с прокруткой
+        text_frame = Frame(problem_window)
+        text_frame.pack(fill=BOTH, expand=True, padx=20, pady=10)
+        
+        text_widget = Text(text_frame, wrap=WORD, font=('Trebuchet MS', 10), bg="#F7F1EE", fg="#123C69")
+        scrollbar = ttk.Scrollbar(text_frame, orient=VERTICAL, command=text_widget.yview)
+        text_widget.configure(yscrollcommand=scrollbar.set)
+        
+        text_widget.pack(side=LEFT, fill=BOTH, expand=True)
+        scrollbar.pack(side=RIGHT, fill=Y)
+        
+        # Заполняем текстовое поле
+        text_widget.insert(END, f"Всего проблемных записей: {total_count}\n\n", "header")
+        text_widget.insert(END, "=" * 50 + "\n\n")
+        
+        for service_name, ovd_list in problem_dict.items():
+            text_widget.insert(END, f"📌 {service_name}:\n", "service")
+            for ovd in ovd_list:
+                text_widget.insert(END, f"   • {ovd}\n", "ovd")
+            text_widget.insert(END, "\n")
+        
+        # Настройка стилей текста
+        text_widget.tag_configure("header", font=('Trebuchet MS', 12, 'bold'), foreground="#AC3B61")
+        text_widget.tag_configure("service", font=('Trebuchet MS', 11, 'bold'), foreground="#d77991")
+        text_widget.tag_configure("ovd", font=('Trebuchet MS', 10), foreground="#123C69")
+        
+        text_widget.configure(state=DISABLED)  # Делаем поле только для чтения
+        
+        # Кнопки
+        btn_frame = Frame(problem_window, bg="#EEE2DC")
+        btn_frame.pack(pady=10)
+        
+        def retry_problems():
+            problem_window.destroy()
+            if service_type == "migrant":
+                self.retry_migrant_services(problem_dict)
+            else:
+                self.retry_citizen_services(problem_dict)
+        
+        btn_retry = customtkinter.CTkButton(
+            btn_frame,
+            text="Повторить попытку записи",
+            font=('Trebuchet MS', 14, 'bold'),
+            fg_color='#EDC7B7',
+            hover_color='#A58B80',
+            text_color='#AC3B61',
+            command=retry_problems
+        )
+        btn_retry.pack(side=LEFT, padx=5)
+        
+        btn_close = customtkinter.CTkButton(
+            btn_frame,
+            text="Закрыть",
+            font=('Trebuchet MS', 14, 'bold'),
+            fg_color='#EDC7B7',
+            hover_color='#A58B80',
+            text_color='#AC3B61',
+            command=problem_window.destroy
+        )
+        btn_close.pack(side=LEFT, padx=5)
+
+    def retry_migrant_services(self, problem_dict):
+        """
+        Перезапускает только проблемные записи для мигрантских услуг
+        """
+        total_count = sum(len(ovds) for ovds in problem_dict.values())
+        result = mb.askyesno(
+            "Подтверждение",
+            f"Будет выполнена повторная попытка записи для {total_count} проблемных записей.\n\n"
+            f"Это может занять некоторое время. Продолжить?"
+        )
+        
+        if not result:
+            return
+        
+        # Создаём поток для выполнения
+        thread = Thread(target=self._retry_migrant_services_thread, args=(problem_dict,))
+        thread.daemon = True
+        thread.start()
+        
+        mb.showinfo("Информация", "Запущен процесс повторной записи. Это может занять некоторое время...")
+
+    def _retry_migrant_services_thread(self, problem_dict):
+        """
+        Фоновый поток для повторной записи мигрантских услуг
+        """
+        try:
+            # Для каждой услуги перезапускаем
+            for service_name, ovd_list in problem_dict.items():
+                if service_name == "МУ":
+                    self._retry_specific_service_with_ovds(self.StartMY, ovd_list, 0, "МУ")
+                elif service_name == "РВП":
+                    self._retry_specific_service_with_ovds(self.StartRVP, ovd_list, 1, "РВП")
+                elif service_name == "ВНЖ":
+                    self._retry_specific_service_with_ovds(self.StartVNJ, ovd_list, 2, "ВНЖ")
+                elif service_name == "Патент":
+                    self._retry_specific_service_with_ovds(self.StartPATENT, ovd_list, 3, "Патент")
+                elif service_name == "Виза":
+                    self._retry_specific_service_with_ovds(self.StartVIZA, ovd_list, 4, "Виза")
+            
+            # Обновляем таблицу в главном потоке
+            self.root.after(0, lambda: mb.showinfo("Готово", "Повторная запись завершена!"))
+            self.root.after(0, lambda: self.refresh_table_data() if hasattr(self, 'refresh_table_data') else None)
+            
+        except Exception as e:
+            self.root.after(0, lambda: mb.showerror("Ошибка", f"Произошла ошибка: {e}"))
+
+    def retry_citizen_services(self, problem_dict):
+        """
+        Перезапускает только проблемные записи для гражданских услуг
+        """
+        total_count = sum(len(ovds) for ovds in problem_dict.values())
+        result = mb.askyesno(
+            "Подтверждение",
+            f"Будет выполнена повторная попытка записи для {total_count} проблемных записей.\n\n"
+            f"Это может занять некоторое время. Продолжить?"
+        )
+        
+        if not result:
+            return
+        
+        thread = Thread(target=self._retry_citizen_services_thread, args=(problem_dict,))
+        thread.daemon = True
+        thread.start()
+        
+        mb.showinfo("Информация", "Запущен процесс повторной записи. Это может занять некоторое время...")
+
+    def _retry_citizen_services_thread(self, problem_dict):
+        """
+        Фоновый поток для повторной записи гражданских услуг
+        """
+        try:
+            for service_name, ovd_list in problem_dict.items():
+                if service_name == "РП":
+                    self._retry_specific_service_with_ovds(self.StartReplasementPassport, ovd_list, 5, "РП")
+                elif service_name == "ЗП Новый":
+                    self._retry_specific_service_with_ovds(self.StartForeignPassportOfANewType, ovd_list, 6, "ЗП Новый")
+                elif service_name == "ЗП Старый":
+                    self._retry_specific_service_with_ovds(self.StartForeignPassportOfAOldType, ovd_list, 7, "ЗП Старый")
+                elif service_name == "Приглашение":
+                    self._retry_specific_service_with_ovds(self.StartInvitation, ovd_list, 8, "Приглашение")
+                elif service_name == "АСИ":
+                    self._retry_specific_service_with_ovds(self.StartASI, ovd_list, 9, "АСИ")
+                elif service_name == "РУ":
+                    self._retry_specific_service_with_ovds(self.StartRegistrationAtPlaceOfResidence, ovd_list, 10, "РУ")
+            
+            self.root.after(0, lambda: mb.showinfo("Готово", "Повторная запись завершена!"))
+            self.root.after(0, lambda: self.refresh_table_data() if hasattr(self, 'refresh_table_data') else None)
+            
+        except Exception as e:
+            self.root.after(0, lambda: mb.showerror("Ошибка", f"Произошла ошибка: {e}"))
+
+    def _retry_specific_service_with_ovds(self, start_func, ovd_list, col_index, service_name):
+        """
+        Выполняет повторную запись для конкретной услуги и списка ОВД
+        """
+        if not ovd_list:
+            print(f"Нет проблемных ОВД для {service_name}")
+            return
+        
+        # Запускаем услугу (переходим на страницу записи)
+        self.BackMainPage()
+        start_func()
+        
+        # Проходим по каждому ОВД в списке
+        for ovd in ovd_list:
+            try:
+                print(f"Обработка {service_name} - {ovd}")
+                self._retry_single_ovd(ovd, col_index, service_name)
+            except Exception as e:
+                print(f"Ошибка при записи в {ovd}: {e}")
+                # Пробуем вернуться к списку ОВД
+                try:
+                    back_button = self.browser.find_element(By.CLASS_NAME, "link-btn")
+                    self.browser.execute_script("arguments[0].click();", back_button)
+                    time.sleep(1)
+                except:
+                    pass
+
+    def _retry_single_ovd(self, ovd_name, col_index, service_name):
+        """
+        Повторная попытка записи для одного ОВД
+        """
+        try:
+            # 1. Ищем поле ввода и вводим название ОВД
+            search_input = (By.CLASS_NAME, "search-input")
+            self.wait.until(EC.visibility_of_element_located(search_input))
+            rightRegionSearch = self.wait.until(EC.element_to_be_clickable(search_input))
+            
+            rightRegionSearch.click()
+            rightRegionSearch.clear()
+            rightRegionSearch.send_keys(ovd_name)
+            
+            time.sleep(self.get_delay('after_input'))
+            
+            # 2. Нажимаем на найденное ОВД в выпадающем списке
+            butLinkOnSearchMap = (By.CLASS_NAME, "balloon-btn")
+            ButtonLinkOnSearchMap = self.wait.until(EC.visibility_of_element_located(butLinkOnSearchMap))
+            time.sleep(self.get_delay('before_click'))
+            ButtonLinkOnSearchMap.click()
+            
+            # 3. Нажимаем кнопку "Выбрать"
+            chooseBut = By.CLASS_NAME, "wide"
+            self.wait.until(EC.visibility_of_element_located(chooseBut))
+            chooseButton = self.wait.until(EC.element_to_be_clickable(chooseBut))
+            time.sleep(self.get_delay('after_choose'))
+            chooseButton.click()
+            
+            # 4. Проверяем, не появилось ли окно с лимитом
+            try:
+                limit_error = WebDriverWait(self.browser, 3).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, "h3"))
+                )
+                
+                if limit_error and "Запись временно недоступна" in limit_error.text:
+                    print(f"Превышен лимит попыток для {ovd_name}")
+                    # Нажимаем кнопку назад
+                    backFromCalendar = self.browser.find_element(By.CLASS_NAME, "link-btn")
+                    self.browser.execute_script("arguments[0].click();", backFromCalendar)
+                    time.sleep(1)
+                    return  # Выходим, не обновляя таблицу
+            except:
+                pass
+            
+            # 5. Работа с календарём
+            kalendNum = (By.XPATH, "//epgu-cf-ui-constructor-screen-pad[@class='ng-star-inserted']")
+            self.wait.until(EC.visibility_of_all_elements_located(kalendNum))
+            
+            kalendar = self.browser.find_elements(By.CLASS_NAME, "locked")
+            dataDay = []
+            
+            for day in kalendar:
+                dayNumber = day.find_element(By.CLASS_NAME, "calendar-day-text").text
+                dataDay.append(dayNumber)
+            
+            dataDaySet = frozenset(dataDay)
+            dayRecord = [item for item in self.AllDayinMonth if item not in dataDaySet]
+            
+            if dayRecord:
+                dayRecord = dayRecord[0]
+                new_data = int(dayRecord)
+                
+                # Определяем, в какой DataFrame писать (df или dfMVD)
+                if col_index < len(self.df.columns):
+                    # Обновляем self.df
+                    if ovd_name in self.indexDF:
+                        idx = self.indexDF.index(ovd_name)
+                        column_name = self.df.columns[col_index]
+                        self.df.at[idx, column_name] = str(new_data)
+                        print(f"✅ {service_name} - {ovd_name}: запись на {new_data} число")
+                    elif ovd_name in self.indexDFMVD:
+                        idx = self.indexDFMVD.index(ovd_name)
+                        column_name = self.dfMVD.columns[col_index]
+                        self.dfMVD.at[idx, column_name] = str(new_data)
+                        print(f"✅ {service_name} - {ovd_name} (МВД): запись на {new_data} число")
+            else:
+                print(f"⚠️ {service_name} - {ovd_name}: нет свободных дней")
+            
+            # 6. Возврат к списку ОВД
+            time.sleep(self.get_delay('before_back'))
+            backFromCalendar = self.browser.find_element(By.CLASS_NAME, "link-btn")
+            self.browser.execute_script("arguments[0].click();", backFromCalendar)
+            time.sleep(self.get_delay('after_back'))
+            
+        except Exception as e:
+            print(f"❌ Ошибка при повторной записи в {ovd_name}: {e}")
 
     def refresh_table_data(self):
         """Обновляет данные в таблице"""
@@ -1271,7 +1635,7 @@ class Window:
         for item in self.tree.get_children():
             values = self.tree.item(item, 'values')
             for i, val in enumerate(values):
-                if val in ['X', 'Х', '_', '-']:
+                if val in ['_', '-']:
                     # Если нужно подсветить строку, можно изменить тег
                     self.tree.item(item, tags=('problem',))
                     break
