@@ -366,11 +366,11 @@ class Window:
                 'main_page': 1,
             },
             'slow': {
-                'after_input': 2,
+                'after_input': 2.5,
                 'before_button': 4,
-                'before_click': 4,
+                'before_click': 4.5,
                 'after_choose': 4.5,
-                'after_click': 3,
+                'after_click': 3.5,
                 'before_back': 5,
                 'after_back': 3,
                 'error_retry': 4,
@@ -1946,10 +1946,7 @@ class Window:
             EC.element_to_be_clickable((By.CLASS_NAME,"button")))
         right.click()
     def StartReplasementPassport(self):
-        StartButton = WebDriverWait(self.browser, 20).until(
-            EC.presence_of_element_located((By.CLASS_NAME,"button")))
-
-        StartButton.click()
+        self.click_start_button_and_close_notification()
 
         buttonReplacementPassport = WebDriverWait(self.browser, 20).until(
             EC.presence_of_element_located((By.XPATH,f"//span[contains(text(),'{self.data_path_btn['rp']}')]")))
@@ -1960,10 +1957,7 @@ class Window:
         right.click()
         self.rightEmailTelepthoneRegoin()         
     def StartForeignPassportOfANewType(self):
-        StartButton = WebDriverWait(self.browser, 20).until(
-            EC.presence_of_element_located((By.CLASS_NAME,"button")))
-
-        StartButton.click()
+        self.click_start_button_and_close_notification()
 
         ForeignPassport = WebDriverWait(self.browser, 20).until(
             EC.presence_of_element_located((By.XPATH,f"//span[contains(text(),'{self.data_path_btn['zp']}')]")))
@@ -1979,10 +1973,7 @@ class Window:
 
         self.rightEmailTelepthoneRegoin()
     def StartForeignPassportOfAOldType(self):
-        StartButton = WebDriverWait(self.browser, 20).until(
-            EC.presence_of_element_located((By.CLASS_NAME,"button")))
-
-        StartButton.click()
+        self.click_start_button_and_close_notification()
 
         ForeignPassport = WebDriverWait(self.browser, 20).until(
             EC.presence_of_element_located((By.XPATH,f"//span[contains(text(),'{self.data_path_btn['zp']}')]")))
@@ -1998,10 +1989,7 @@ class Window:
 
         self.rightEmailTelepthoneRegoin()
     def StartInvitation(self):
-        StartButton = WebDriverWait(self.browser, 20).until(
-           EC.presence_of_element_located((By.CLASS_NAME,"button")))
-
-        StartButton.click()
+        self.click_start_button_and_close_notification()
 
         ForeignPassport = WebDriverWait(self.browser, 20).until(
             EC.presence_of_element_located((By.XPATH,f"//span[contains(text(),'{self.data_path_btn['invitation']}')]")))
@@ -2009,10 +1997,7 @@ class Window:
 
         self.rightEmailTelepthoneRegoin()
     def StartASI(self):
-        StartButton = WebDriverWait(self.browser, 20).until(
-                EC.presence_of_element_located((By.CLASS_NAME,"button")))
-
-        StartButton.click()
+        self.click_start_button_and_close_notification()
 
         ASI = WebDriverWait(self.browser, 20).until(
                 EC.presence_of_element_located((By.XPATH,f"//span[contains(text(),'{self.data_path_btn['asi']}')]")))
@@ -2025,10 +2010,7 @@ class Window:
         self.rightEmailTelepthoneRegoin() 
             
     def StartRegistrationAtPlaceOfResidence(self):
-        StartButton = WebDriverWait(self.browser, 20).until(
-            EC.presence_of_element_located((By.CLASS_NAME,"button")))
-
-        StartButton.click()
+        self.click_start_button_and_close_notification()
 
         RegistrationAtPlaceOfResidence = WebDriverWait(self.browser, 20).until(
             EC.presence_of_element_located((By.XPATH,f"//span[contains(text(),'{self.data_path_btn['ry']}')]")))
@@ -2053,15 +2035,49 @@ class Window:
     #        EC.presence_of_element_located((By.XPATH,f"//span[contains(text(),'{self.FullValueSelectedUslugi[11]}')]")))
     #    GPPSGet.click()
     #
-    #    self.rightEmailTelepthoneRegoin()    
-    def StartMY(self):
-        StartButton = WebDriverWait(self.browser, 20).until(
-            EC.presence_of_element_located((By.CLASS_NAME,"button")))
+    #    self.rightEmailTelepthoneRegoin()
+    #
+    def close_notification_if_exists(self):
+        """Закрывает всплывающее уведомление, если оно появилось"""
+        try:
+            # Ищем кнопку закрытия уведомления
+            close_button = WebDriverWait(self.browser, 5).until(
+                EC.element_to_be_clickable((By.CSS_SELECTOR, "button.notifier__close"))
+            )
+            close_button.click()
+            print("Уведомление закрыто")
+            time.sleep(1)
+            return True
+        except TimeoutException:
+            # Уведомления нет, продолжаем
+            return False
+        except Exception as e:
+            print(f"Ошибка при закрытии уведомления: {e}")
+            return False
+        
+    def click_start_button_and_close_notification(self):
+        """Нажимает кнопку 'Начать' и закрывает уведомление, если оно появилось"""
+        try:
+            StartButton = WebDriverWait(self.browser, 20).until(
+                EC.element_to_be_clickable((By.CLASS_NAME, "button")))
+            StartButton.click()
+            time.sleep(0.5)
+        except Exception as e:
+            print(f"Ошибка при нажатии кнопки 'Начать': {e}")
+            raise
+        
+        # Закрываем уведомление, если оно появилось
+        self.close_notification_if_exists()
 
-        StartButton.click()
+    def StartMY(self):
+        self.click_start_button_and_close_notification()
 
         MY = WebDriverWait(self.browser, 20).until(
             EC.presence_of_element_located((By.XPATH,f"//span[contains(text(),'{self.data_path_btn['my']}')]")))
+        MY.click()
+
+        MY = WebDriverWait(self.browser, 20).until(
+            EC.presence_of_element_located((By.XPATH,f"//span[contains(text(),'Регистрация по месту жительства')]")))
         MY.click()
 
         MYGet = WebDriverWait(self.browser, 20).until(
@@ -2070,10 +2086,7 @@ class Window:
     
         self.rightEmailTelepthoneRegoin() 
     def StartVNJ(self):
-        StartButton = WebDriverWait(self.browser, 20).until(
-            EC.presence_of_element_located((By.CLASS_NAME,"button")))
-
-        StartButton.click()
+        self.click_start_button_and_close_notification()
 
         VNJ = WebDriverWait(self.browser, 20).until(
             EC.presence_of_element_located((By.XPATH,f"//span[contains(text(),'{self.data_path_btn['vnj']}')]")))
@@ -2085,10 +2098,7 @@ class Window:
 
         self.rightEmailTelepthoneRegoin()
     def StartRVP(self):
-        StartButton = WebDriverWait(self.browser, 20).until(
-            EC.presence_of_element_located((By.CLASS_NAME,"button")))
-
-        StartButton.click()
+        self.click_start_button_and_close_notification()
 
         RVP = WebDriverWait(self.browser, 20).until(
             EC.presence_of_element_located((By.XPATH,f"//span[contains(text(),'{self.data_path_btn['rvp']}')]")))
@@ -2100,10 +2110,7 @@ class Window:
 
         self.rightEmailTelepthoneRegoin()
     def StartPATENT(self):
-        StartButton = WebDriverWait(self.browser, 20).until(
-            EC.presence_of_element_located((By.CLASS_NAME,"button")))
-
-        StartButton.click()
+        self.click_start_button_and_close_notification()
 
         PATENT = WebDriverWait(self.browser, 20).until(
             EC.presence_of_element_located((By.XPATH,f"//span[contains(text(),'{self.data_path_btn['patent']}')]")))
@@ -2115,10 +2122,7 @@ class Window:
 
         self.rightEmailTelepthoneRegoin()
     def StartVIZA(self):
-        StartButton = WebDriverWait(self.browser, 20).until(
-            EC.presence_of_element_located((By.CLASS_NAME,"button")))
-
-        StartButton.click()
+        self.click_start_button_and_close_notification()
 
         VIZA = WebDriverWait(self.browser, 20).until(
             EC.presence_of_element_located((By.XPATH,f"//span[contains(text(),'{self.data_path_btn['viza']}')]")))
