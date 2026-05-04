@@ -291,8 +291,8 @@ class Window:
         self.NameOVDRegistrationAtPlaceOfResidenceMVD = []
         #self.NameOVDGPPSMVD = ['Управление по вопросам миграции']
         self.NameOVDMYMVD = []
-        self.NameOVDRVPMVD = ['Есенина']
-        self.NameOVDVNJMVD = ['Есенина']
+        self.NameOVDRVPMVD = ['Управление по вопросам миграции']
+        self.NameOVDVNJMVD = ['Управление по вопросам миграции']
         self.NameOVDPATENTMVD = ['Есенина']
         self.NameOVDVIZAMVD = ['Управление по вопросам миграции']
         
