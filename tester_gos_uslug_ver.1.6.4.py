@@ -1558,7 +1558,7 @@ class Window:
         for ovd in ovd_list:
             try:
                 print(f"Обработка {service_name} - {ovd}")
-                self._retry_single_ovd(ovd, col_index, service_name)
+                self._retry_single_ovd(start_func, ovd, col_index, service_name)
             except Exception as e:
                 print(f"Ошибка при записи в {ovd}: {e}")
                 # Пробуем вернуться к списку ОВД
@@ -1569,93 +1569,169 @@ class Window:
                 except:
                     pass
 
-    def _retry_single_ovd(self, ovd_name, col_index, service_name):
+    def _retry_single_ovd(self, start_func, ovd_name, col_index, service_name):
         """
         Повторная попытка записи для одного ОВД
         """
         try:
-            # 1. Ищем поле ввода и вводим название ОВД
             search_input = (By.CLASS_NAME, "search-input")
             self.wait.until(EC.visibility_of_element_located(search_input))
             rightRegionSearch = self.wait.until(EC.element_to_be_clickable(search_input))
-            
+
             rightRegionSearch.click()
             rightRegionSearch.clear()
             rightRegionSearch.send_keys(ovd_name)
-            
+        
             time.sleep(self.get_delay('after_input'))
+        
+        except ElementClickInterceptedException:
+            try:
+                time.sleep(self.get_delay('error_retry'))
+                rightRegionSearch = self.wait.until(EC.visibility_of_element_located(search_input))
+                rightRegionSearch.click()
+                rightRegionSearch.clear()
+                rightRegionSearch.send_keys(ovd_name)
+            except ElementClickInterceptedException:
+                try:
+                    time.sleep(self.get_delay('error_retry'))
+                    rightRegionSearch = self.wait.until(EC.visibility_of_element_located(search_input))
+                    rightRegionSearch.click()
+                    rightRegionSearch.clear()
+                    rightRegionSearch.send_keys(ovd_name)
+                except ElementClickInterceptedException:
+                    self.BackMainPage()
+                    start_func()
+                    
+        except TimeoutException:
+            print("Ошибка страница не загрузилась")
             
-            # 2. Нажимаем на найденное ОВД в выпадающем списке
+                    
+        try:
+            time.sleep(self.get_delay('before_button'))
             butLinkOnSearchMap = (By.CLASS_NAME, "balloon-btn")
             ButtonLinkOnSearchMap = self.wait.until(EC.visibility_of_element_located(butLinkOnSearchMap))
             time.sleep(self.get_delay('before_click'))
             ButtonLinkOnSearchMap.click()
-            
-            # 3. Нажимаем кнопку "Выбрать"
-            chooseBut = By.CLASS_NAME, "wide"
-            self.wait.until(EC.visibility_of_element_located(chooseBut))
-            chooseButton = self.wait.until(EC.element_to_be_clickable(chooseBut))
-            time.sleep(self.get_delay('after_choose'))
-            chooseButton.click()
-            
-            # 4. Проверяем, не появилось ли окно с лимитом
+        
+        except TimeoutException:
             try:
-                limit_error = WebDriverWait(self.browser, 3).until(
-                    EC.presence_of_element_located((By.CSS_SELECTOR, "h3"))
-                )
-                
-                if limit_error and "Запись временно недоступна" in limit_error.text:
-                    print(f"Превышен лимит попыток для {ovd_name}")
-                    # Нажимаем кнопку назад
+                butNotFound = (By.CLASS_NAME, "not-found-text")
+                self.wait.until(EC.visibility_of_element_located(butNotFound))
+                new_data = "Х"
+                index_to_insert = col_index
+                self.df.at[index_to_insert, service_name] = new_data
+                time.sleep(self.get_delay('error_retry'))
+
+            except:
+                print("Неизвестная ошибка")
+                rightRegionSearch.clear()
+    
+        
+        chooseBut = By.CLASS_NAME, "wide"
+        self.wait.until(EC.visibility_of_element_located(chooseBut))
+        chooseButton = self.wait.until(EC.element_to_be_clickable(chooseBut))
+                    
+        time.sleep(self.get_delay('after_choose'))
+        chooseButton.click()
+                    
+                    # ========== НОВАЯ ПРОВЕРКА: Окно с ограничением лимита ==========
+                    # Проверяем, не появилось ли окно "Запись временно недоступна"
+        try:
+                        # Ищем окно с сообщением о лимите
+            limit_error = WebDriverWait(self.browser, 3).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, "h3"))
+            )
+                        
+            if limit_error and "Запись временно недоступна" in limit_error.text:
+                print(f"Обнаружено ограничение для {ovd_name}: превышен лимит попыток")
+                            
+                            # Нажимаем кнопку "На главную"
+                try:
+                    time.sleep(self.get_delay('before_back'))
                     backFromCalendar = self.browser.find_element(By.CLASS_NAME, "link-btn")
                     self.browser.execute_script("arguments[0].click();", backFromCalendar)
-                    time.sleep(1)
-                    return  # Выходим, не обновляя таблицу
-            except:
-                pass
-            
-            # 5. Работа с календарём
-            kalendNum = (By.XPATH, "//epgu-cf-ui-constructor-screen-pad[@class='ng-star-inserted']")
+                    time.sleep(self.get_delay('after_back'))
+                except:
+                    pass
+                            
+                            # Ставим "_" в таблицу и переходим к следующему ОВД
+                new_data = "_"
+                index_to_insert = col_index
+                self.df.at[index_to_insert, service_name] = new_data
+                            
+                # Возвращаемся на главную страницу и продолжаем со следующим ОВД
+                self.BackMainPage()
+                start_func()
+               
+                            
+        except TimeoutException:
+                        # Окна нет, продолжаем нормальную работу
+            pass
+        except Exception as e:
+            print(f"Ошибка при проверке лимита: {e}")
+                    # ========== КОНЕЦ ПРОВЕРКИ ==========
+        
+        kalendNum = (By.XPATH, "//epgu-cf-ui-constructor-screen-pad[@class='ng-star-inserted']")
+        try:
             self.wait.until(EC.visibility_of_all_elements_located(kalendNum))
-            
             kalendar = self.browser.find_elements(By.CLASS_NAME, "locked")
+            soup = BeautifulSoup(self.browser.page_source, "lxml")
             dataDay = []
-            
+        
             for day in kalendar:
                 dayNumber = day.find_element(By.CLASS_NAME, "calendar-day-text").text
                 dataDay.append(dayNumber)
-            
+        
             dataDaySet = frozenset(dataDay)
             dayRecord = [item for item in self.AllDayinMonth if item not in dataDaySet]
-            
-            if dayRecord:
-                dayRecord = dayRecord[0]
-                new_data = int(dayRecord)
-                
-                # Определяем, в какой DataFrame писать (df или dfMVD)
-                if col_index < len(self.df.columns):
-                    # Обновляем self.df
-                    if ovd_name in self.indexDF:
-                        idx = self.indexDF.index(ovd_name)
-                        column_name = self.df.columns[col_index]
-                        self.df.at[idx, column_name] = str(new_data)
-                        print(f"✅ {service_name} - {ovd_name}: запись на {new_data} число")
-                    elif ovd_name in self.indexDFMVD:
-                        idx = self.indexDFMVD.index(ovd_name)
-                        column_name = self.dfMVD.columns[col_index]
-                        self.dfMVD.at[idx, column_name] = str(new_data)
-                        print(f"✅ {service_name} - {ovd_name} (МВД): запись на {new_data} число")
-            else:
-                print(f"⚠️ {service_name} - {ovd_name}: нет свободных дней")
-            
-            # 6. Возврат к списку ОВД
+            dayRecord = dayRecord[0]
+            new_data = int(dayRecord)
+        
+            dayRecordVer = self.WorkDaysAfterToDay(new_data, YVM=True)
+        
+            index_to_insert = col_index
+            self.df.at[index_to_insert, service_name] = str(dayRecordVer)
+        
+            print(dayRecord)
+        except TimeoutException:
+            TimeOutKalendar = (By.CLASS_NAME, "button")
+            try:
+                self.wait.until(EC.visibility_of_all_elements_located(TimeOutKalendar))
+                self.browser.refresh()
+                print("_")
+                new_data = "_"
+                index_to_insert = col_index
+                self.df.at[index_to_insert, service_name] = new_data
+                self.BackMainPage()
+                start_func()
+               
+            except TimeoutException:
+                self.BackMainPage()
+                start_func()
+               
+                    
+        try:
             time.sleep(self.get_delay('before_back'))
             backFromCalendar = self.browser.find_element(By.CLASS_NAME, "link-btn")
             self.browser.execute_script("arguments[0].click();", backFromCalendar)
             time.sleep(self.get_delay('after_back'))
-            
-        except Exception as e:
-            print(f"❌ Ошибка при повторной записи в {ovd_name}: {e}")
+        
+        except ElementClickInterceptedException:
+            try:
+                time.sleep(self.get_delay('error_retry'))
+                backIfNotHaveRecord = self.browser.find_element(By.CSS_SELECTOR, "lib-button.conf-modal__button:nth-child(2) > div:nth-child(1) > button:nth-child(1)")
+                new_data = "_"
+                index_to_insert = col_index
+                self.df.at[index_to_insert, service_name] = new_data
+                backIfNotHaveRecord.click()
+                time.sleep(self.get_delay('error_retry'))
+            except NoSuchElementException:
+                new_data = "-"
+                index_to_insert = col_index
+                self.df.at[index_to_insert, service_name] = new_data
+                self.BackMainPage()
+                start_func()
+              
 
     def refresh_table_data(self):
         """Обновляет данные в таблице"""
@@ -1675,14 +1751,18 @@ class Window:
             self.tree.column(f"#{i}", width=130)
         
         # Заполняем данными
-        for i, DataOVD in enumerate(self.DataOVDs):
-            self.tree.insert(parent='', index='end', values=(self.indexDF[i],) + DataOVD)
+        try:
+            for i, DataOVD in enumerate(self.DataOVDs):
+                self.tree.insert(parent='', index='end', values=(self.indexDF[i],) + DataOVD)
         
-        self.tree.insert(parent='', index='end', values=('', '', '', '', '', '', '', '', '', '', '', '', ''))
-        
-        for i, DataOVDYVM in enumerate(self.DataOVDsYVM):
-            self.tree.insert(parent='', index='end', values=(self.indexDFMVD[i],) + DataOVDYVM)
-        
+            self.tree.insert(parent='', index='end', values=('', '', '', '', '', '', '', '', '', '', '', '', ''))
+        except:
+            print("Ошибка обновления таблицы")
+        try:
+            for i, DataOVDYVM in enumerate(self.DataOVDsYVM):
+                self.tree.insert(parent='', index='end', values=(self.indexDFMVD[i],) + DataOVDYVM)
+        except:
+            print("Ошибка обновления таблицы 2")
         # Подсвечиваем ячейки с проблемами (опционально)
         self.highlight_problem_cells()
 
@@ -2183,6 +2263,37 @@ class Window:
 
                 time.sleep(self.get_delay('after_input'))
 
+                time.sleep(2.7)
+                
+                # ========== НОВАЯ ПРОВЕРКА: Статус загруженности ==========
+                try:
+                    # Ищем элемент с индикатором статуса
+                    status_element = WebDriverWait(self.browser, 3).until(
+                        EC.presence_of_element_located((By.CSS_SELECTOR, "div.popup-idleness"))
+                    )
+                    
+                    # Проверяем, есть ли зеленый класс (свободно)
+                    if "green" in status_element.get_attribute("class"):
+                        print(f"Статус для {NameOVD[i]}: Свободно")
+                        
+                        # Записываем "OK" в таблицу
+                        new_data = "OK"
+                        index_to_insert = indexDF[i]
+                        df.at[index_to_insert, NameService] = new_data
+                        
+                        # Очищаем поле поиска
+                        rightRegionSearch.clear()
+                        continue  # Переходим к следующему ОВД
+                    else:
+                        print(f"Статус для {NameOVD[i]}: Не свободно, продолжаем обычную проверку")
+                        
+                except TimeoutException:
+                    # Статус не найден, продолжаем обычную проверку
+                    print(f"Статус для {NameOVD[i]} не найден, продолжаем обычную проверку")
+                except Exception as e:
+                    print(f"Ошибка при проверке статуса: {e}")
+                # ========== КОНЕЦ ПРОВЕРКИ СТАТУСА ==========
+
             except ElementClickInterceptedException:
                 try:
                     time.sleep(self.get_delay('error_retry'))
@@ -2205,6 +2316,7 @@ class Window:
                 print("Ошибка страница не загрузилась")
                 break
             
+            # Дальше идет обычная проверка (код без изменений)
             try:
                 time.sleep(self.get_delay('before_button'))
                 butLinkOnSearchMap = (By.CLASS_NAME, "balloon-btn")
@@ -2213,6 +2325,7 @@ class Window:
                 ButtonLinkOnSearchMap.click()
 
             except TimeoutException:
+                # ... остальной код без изменений
                 try:
                     butNotFound = (By.CLASS_NAME, "not-found-text")
                     self.wait.until(EC.visibility_of_element_located(butNotFound))
